@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "identityguard"
+version = "1.0.0"
+description = "Local-first synthetic identity and access security analysis platform"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi==0.141.1",
+  "jinja2==3.1.6",
+  "networkx==3.6.1",
+  "pydantic==2.13.4",
+  "sqlalchemy==2.0.52",
+  "uvicorn==0.52.4",
+]
+
+[project.optional-dependencies]
+test = [
+  "httpx2==2.12.0",
+  "pip-audit==2.10.1",
+  "pytest==9.1.1",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

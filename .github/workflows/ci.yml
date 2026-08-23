@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "build/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install tested dependencies
+        run: python -m pip install -e '.[test]'
+      - name: Run tests
+        run: pytest
+      - name: Compile Python
+        run: python -m compileall -q app scripts tests
+      - name: Validate deterministic demo
+        run: python scripts/validate_demo.py
+      - name: Run CLI and validate JSON export
+        run: |
+          python scripts/analyze_identities.py --json reports/identity-analysis.json
+          python -m json.tool reports/identity-analysis.json >/dev/null
+      - name: Audit Python dependencies
+        run: pip-audit
