@@ -1,0 +1,20 @@
+services:
+  identityguard:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      IDENTITYGUARD_DATABASE_URL: sqlite:////data/identityguard.db
+    volumes:
+      - identityguard-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+volumes:
+  identityguard-data:

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>IdentityGuard | Identity Security</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><span class="mark">IG</span><strong>IdentityGuard</strong></div>
+    <span class="synthetic">SYNTHETIC DATASET</span>
+  </header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">IDENTITY &amp; ACCESS SECURITY</p>
+      <h1>See how access accumulates.<br><span>Explain how to reduce it.</span></h1>
+      <p>Local-first privilege analysis across identities, nested groups, roles, permissions, resources, and authentication behavior.</p>
+    </section>
+    <section class="metrics">
+      <article><small>Identities</small><b>{{ summary.total_identities }}</b></article>
+      <article><small>Privileged</small><b>{{ summary.privileged_identities }}</b></article>
+      <article><small>MFA coverage</small><b>{{ summary.mfa_coverage_percent }}%</b></article>
+      <article><small>Critical / High</small><b>{{ summary.critical_findings }} / {{ summary.high_findings }}</b></article>
+      <article><small>Potential paths</small><b>{{ summary.potential_access_paths }}</b></article>
+    </section>
+    <section class="grid">
+      <article class="panel span-two">
+        <div class="panel-head"><div><p class="eyebrow">PRIVILEGE PATHS</p><h2>Identity relationships</h2></div><span>Shortest sensitive paths</span></div>
+        {% for path in paths %}
+        <div class="path"><strong>{{ path.source_identity }}</strong>{% for node in path.path_nodes[1:] %}<i>→</i><span>{{ node }}</span>{% endfor %}<em>{{ path.effective_privilege }}/10</em></div>
+        {% endfor %}
+      </article>
+      <article class="panel">
+        <div class="panel-head"><div><p class="eyebrow">IDENTITIES</p><h2>Explorer</h2></div></div>
+        {% for user in users %}<div class="identity"><span class="avatar">{{ user.display_name[0] }}</span><div><b>{{ user.display_name }}</b><small>{{ user.department }} · {{ user.account_type }}</small></div>{% if user.privileged %}<em>Privileged</em>{% endif %}</div>{% endfor %}
+      </article>
+      <article class="panel span-two">
+        <div class="panel-head"><div><p class="eyebrow">FINDINGS</p><h2>Explainable risk</h2></div><span>Recommendation only</span></div>
+        {% for finding in findings %}<div class="finding"><span class="severity {{ finding.severity }}">{{ finding.severity }}</span><div><b>{{ finding.rule_id }} · {{ finding.title }}</b><small>{{ finding.entity_id }} — {{ finding.remediation }}</small></div><strong>{{ finding.risk_score }}</strong></div>{% endfor %}
+      </article>
+      <article class="panel">
+        <div class="panel-head"><div><p class="eyebrow">AUTH ANALYTICS</p><h2>Heuristic signals</h2></div></div>
+        {% for anomaly in anomalies %}<div class="anomaly"><b>{{ anomaly.rule_id }} · {{ anomaly.username }}</b><small>{{ anomaly.explanation }}</small></div>{% endfor %}
+      </article>
+      <article class="panel span-three">
+        <div class="panel-head"><div><p class="eyebrow">COVERAGE</p><h2>Implemented IAM rules</h2></div><span>{{ rules|length }} deterministic rules</span></div>
+        <div class="rule-grid">{% for rule in rules %}<div><b>{{ rule.rule_id }}</b><span>{{ rule.title }}</span></div>{% endfor %}</div>
+      </article>
+    </section>
+  </main>
+  <footer>IdentityGuard analyzes synthetic identity data locally. It does not enforce access changes.</footer>
+</body>
+</html>
