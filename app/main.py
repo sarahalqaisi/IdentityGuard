@@ -91,6 +91,16 @@ def current_result(request: Request) -> AnalysisResult:
     return request.app.state.result
 
 
+async def read_bounded_body(request: Request) -> bytes:
+    """Read a request incrementally without buffering more than the limit."""
+    body = bytearray()
+    async for chunk in request.stream():
+        if len(body) + len(chunk) > MAX_REQUEST_BYTES:
+            raise HTTPException(status_code=413, detail="Dataset exceeds the 2 MB input limit")
+        body.extend(chunk)
+    return bytes(body)
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def dashboard(request: Request):
     result = current_result(request)
@@ -139,9 +149,7 @@ async def finding_detail(finding_id: str, request: Request):
 
 @app.post("/api/analyze")
 async def run_analysis(request: Request):
-    body = await request.body()
-    if len(body) > MAX_REQUEST_BYTES:
-        raise HTTPException(status_code=413, detail="Dataset exceeds the 2 MB input limit")
+    body = await read_bounded_body(request)
     if body:
         try:
             dataset = parse_dataset(body)

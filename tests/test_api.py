@@ -1,6 +1,12 @@
+import asyncio
+import json
+
+import pytest
+from fastapi import HTTPException, Request
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import MAX_REQUEST_BYTES, app, read_bounded_body
+from app.seed import demo_dataset
 
 
 def client():
@@ -34,8 +40,10 @@ def test_analyze_demo_and_valid_import():
         demo = test_client.post("/api/analyze")
         assert demo.status_code == 200
         assert demo.json()["dataset_source"] == "synthetic"
-        dataset = test_client.get("/api/users").json()
-        assert dataset
+        payload = demo_dataset().model_dump_json().encode("utf-8")
+        imported = test_client.post("/api/analyze", content=payload, headers={"content-type": "application/json"})
+        assert imported.status_code == 200
+        assert imported.json()["summary"]["total_identities"] == 5
 
 
 def test_malformed_payload_is_sanitized():
@@ -62,3 +70,79 @@ def test_oversized_declared_request_is_rejected_with_headers():
         response = test_client.post("/api/analyze", content=b"{}", headers={"content-length": "2000001"})
         assert response.status_code == 413
         assert response.json()["error"]["code"] == "request_too_large"
+
+
+def exact_boundary_dataset() -> bytes:
+    payload = {
+        "metadata": {"synthetic": True, "padding": ""},
+        "users": [],
+        "groups": [],
+        "roles": [],
+        "permissions": [],
+        "resources": [],
+    }
+    encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    payload["metadata"]["padding"] = "x" * (MAX_REQUEST_BYTES - len(encoded))
+    encoded = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    assert len(encoded) == MAX_REQUEST_BYTES
+    return encoded
+
+
+def test_body_exactly_at_limit_is_accepted():
+    with client() as test_client:
+        response = test_client.post(
+            "/api/analyze",
+            content=exact_boundary_dataset(),
+            headers={"content-type": "application/json"},
+        )
+        assert response.status_code == 200
+        assert response.json()["summary"]["total_identities"] == 0
+
+
+def test_chunked_body_over_limit_without_content_length_is_stopped():
+    observed_chunks = 0
+
+    def chunks():
+        nonlocal observed_chunks
+        for _ in range(4):
+            observed_chunks += 1
+            yield b"x" * 700_000
+
+    with client() as test_client:
+        response = test_client.post(
+            "/api/analyze",
+            content=chunks(),
+            headers={"content-type": "application/json", "transfer-encoding": "chunked"},
+        )
+        assert response.status_code == 413
+        assert response.json() == {
+            "error": {
+                "code": "http_413",
+                "message": "Request body exceeds the supported limit.",
+            }
+        }
+        assert observed_chunks == 4  # The synchronous test transport consumes the generator eagerly.
+        assert "traceback" not in response.text.lower()
+        assert "/home/" not in response.text.lower()
+
+
+def test_bounded_reader_stops_after_first_exceeding_stream_chunk():
+    chunks = [b"x" * 700_000] * 4
+    receive_calls = 0
+
+    async def receive():
+        nonlocal receive_calls
+        chunk = chunks[receive_calls]
+        receive_calls += 1
+        return {"type": "http.request", "body": chunk, "more_body": receive_calls < len(chunks)}
+
+    request = Request(
+        {"type": "http", "method": "POST", "path": "/api/analyze", "headers": []},
+        receive,
+    )
+
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(read_bounded_body(request))
+
+    assert error.value.status_code == 413
+    assert receive_calls == 3
