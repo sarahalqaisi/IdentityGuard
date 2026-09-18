@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/brand/identityguard-logo.png" alt="IdentityGuard logo" width="170">
+</p>
+
 # IdentityGuard
 
 > Identity and access security analysis platform for privilege risk, identity access paths, and least-privilege remediation.
@@ -12,6 +16,8 @@
 Identity permissions accumulate through direct assignments, nested groups, roles, and broad grants. IdentityGuard makes those relationships explainable: it builds potential access paths, evaluates deterministic defensive rules, analyzes synthetic authentication activity, and recommends least-privilege changes without applying them.
 
 IdentityGuard is a local-first portfolio and lab platform. Its bundled identities, organizations, locations, IP addresses, and login events are synthetic.
+
+![IdentityGuard dashboard](docs/screenshots/identityguard-dashboard.png)
 
 ## Verified proof points
 
